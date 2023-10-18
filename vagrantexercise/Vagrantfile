@@ -1,0 +1,42 @@
+# -*- mode: ruby -*-
+# vi: set ft=ruby :
+
+Vagrant.configure("2") do |config|
+  # Define the VM settings
+  config.vm.define "master" do |master|
+    master.vm.box = "ubuntu/focal64"
+    master.vm.network "private_network", ip: "192.168.2.2"
+    master.vm.provider "virtualbox" do |vb|
+      vb.memory = "1024"
+    end
+  end
+
+  config.vm.define "slave" do |slave|
+    slave.vm.box = "ubuntu/focal64"
+    slave.vm.network "private_network", ip: "192.168.2.3"
+    slave.vm.provider "virtualbox" do |vb|
+      vb.memory = "1024"
+    end
+  end
+
+  # Provisioning scripts
+  config.vm.provision "shell", inline: <<-SHELL
+    # Create new user and grant root privileges
+    echo "Creating new user - altschool and granting root privileges..."
+    sudo useradd -m -s /bin/bash -G root,sudo altschool
+    echo "altschool:altpass" | sudo chpasswd
+    sudo apt-get update && sudo apt upgrade -y
+    sudo apt-get install sshpass -y
+    sudo apt-get install -y avahi-daemon libnss-mdns
+    echo "Installing LAMP Stack..."
+    sudo apt install -y apache2 mysql-server php libapache2-mod-php php-mysql
+    # Configure Apache2 to start on boot
+    echo "Apache2 to start on boot..."
+    sudo systemctl enable apache2
+    sudo systemctl start apache2
+    # Validate PHP functionality with Apache
+    echo "Generating PHP test file..."
+    echo -e '<?php\n\tphpinfo();\n?>' | sudo tee /var/www/html/index.php
+  SHELL
+end
+
